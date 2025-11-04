@@ -1,0 +1,12 @@
+bin/
+*.exe
+
+.gocache/
+.gomodcache/
+
+*.log
+
+.env
+
+.idea
+.vscode

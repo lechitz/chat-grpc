@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package chat.v1;
+
+option go_package = "github.com/lechitz/chat-grpc/api/proto/chatv1;chatv1";
+
+// JoinRequest describes the information a client must send to join a room.
+message JoinRequest {
+  string user_id = 1;
+  string room = 2;
+  string display_name = 3;
+}
+
+// ChatPayload represents an arbitrary message sent by a client.
+message ChatPayload {
+  string user_id = 1;
+  string room = 2;
+  string content = 3;
+  int64 timestamp_utc = 4;
+}
+
+// LeaveRequest notifies the server that a client wants to disconnect from a room.
+message LeaveRequest {
+  string user_id = 1;
+  string room = 2;
+}
+
+// ClientEnvelope is the input stream wrapper clients use to talk to the server.
+message ClientEnvelope {
+  oneof message {
+    JoinRequest join = 1;
+    ChatPayload chat = 2;
+    LeaveRequest leave = 3;
+  }
+}
+
+// JoinAck confirms that the user joined the requested room.
+message JoinAck {
+  string user_id = 1;
+  string room = 2;
+  string welcome_message = 3;
+}
+
+// Broadcast envelope for server -> client communication.
+message ServerEvent {
+  oneof event {
+    JoinAck joined = 1;
+    ChatPayload broadcast = 2;
+    ServerNotice notice = 3;
+  }
+}
+
+// ServerNotice conveys system-level announcements (errors, user events).
+message ServerNotice {
+  enum Type {
+    TYPE_GENERIC = 0;
+    TYPE_USER_JOINED = 1;
+    TYPE_USER_LEFT = 2;
+    TYPE_ERROR = 3;
+  }
+
+  Type type = 1;
+  string message = 2;
+  string user_id = 3;
+  string room = 4;
+}
+
+service ChatService {
+  // Channel establishes a bi-directional stream between a client and the server.
+  rpc Channel(stream ClientEnvelope) returns (stream ServerEvent);
+}
