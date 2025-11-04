@@ -74,6 +74,12 @@ printf '%s\n%s\n' \
 
 ## Regenerar protobuf (opcional)
 
+Requer `protoc` e os plugins `protoc-gen-go` e `protoc-gen-go-grpc` instalados na máquina.
+
+```bash
+make proto
+```
+
 ```bash
 protoc \
   --go_out=api/proto/chatv1 --go_opt=paths=source_relative \
