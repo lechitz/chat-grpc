@@ -1,12 +1,13 @@
 bin/
 *.exe
+*.out
 
 .gocache/
 .gomodcache/
 
 *.log
 
-.env
+infra/docker/environment/dev/.env
 
 .idea
 .vscode

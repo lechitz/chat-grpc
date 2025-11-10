@@ -7,6 +7,7 @@ const (
 
 	envAppNameKey            = "CHAT_GRPC_APP_NAME"
 	envEnvironmentKey        = "CHAT_GRPC_ENV"
+	envAppVersionKey         = "CHAT_GRPC_APP_VERSION"
 	envHostKey               = "CHAT_GRPC_HOST"
 	envPortKey               = "CHAT_GRPC_PORT"
 	envShutdownGraceKey      = "CHAT_GRPC_SHUTDOWN_GRACE"
@@ -34,3 +35,6 @@ const (
 	defaultOtelCompression    = "none"
 	defaultOtelServiceVersion = "0.1.0"
 )
+
+// ErrFailedToProcessEnvVars is returned when environment variables cannot be processed.
+const ErrFailedToProcessEnvVars = "failed to process environment variables: %v"
