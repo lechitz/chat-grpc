@@ -17,7 +17,7 @@ Este repositório foi pensado como um laboratório prático para experimentar e 
 
 - [Visão geral](#visão-geral)
 - [Estrutura do repositório](#estrutura-do-repositório)
-- [Pré‑requisitos](#pré-requisitos)
+- [Pré‑requisitos](#pre-requisitos)
 - [Execução local](#execução-local)
 - [Execução com Docker Compose](#execução-com-docker-compose)
 - [Cliente CLI](#cliente-cli)
@@ -49,7 +49,7 @@ Este repositório foi pensado como um laboratório prático para experimentar e 
 
 ---
 
-## Pré‑requisitos
+## Pre‑requisitos
 
 - Go 1.22+
 - Docker 24+ e Docker Compose Plugin (opcional)
