@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	chatv1 "github.com/lechitz/chat-grpc/api/proto/chatv1"
+	"github.com/lechitz/chat-grpc/api/proto/chatv1"
 	"github.com/lechitz/chat-grpc/internal/chat/core/domain"
 	"github.com/lechitz/chat-grpc/internal/chat/core/ports/input"
 	"github.com/lechitz/chat-grpc/internal/chat/core/usecase"
-	"github.com/lechitz/chat-grpc/internal/platform/logger"
+	"github.com/lechitz/chat-grpc/internal/platform/ports/logger"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -22,11 +22,11 @@ type Server struct {
 	chatv1.UnimplementedChatServiceServer
 
 	chat input.StreamService
-	log  logger.Logger
+	log  logger.ContextLogger
 }
 
 // NewServer constructs a gRPC adapter backed by the domain chat service.
-func NewServer(chat input.StreamService, log logger.Logger) *Server {
+func NewServer(chat input.StreamService, log logger.ContextLogger) *Server {
 	return &Server{
 		chat: chat,
 		log:  log,

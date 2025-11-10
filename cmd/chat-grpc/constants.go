@@ -11,6 +11,9 @@ const (
 	logFieldError           = "error"
 	stderrLoadConfigPref    = "load config: "
 	stderrInitLoggerPref    = "init logger: "
+
+	// MsgConfigLoaded is the message for when the configuration is loaded.
+	MsgConfigLoaded = "configuration loaded"
 )
 
 const (

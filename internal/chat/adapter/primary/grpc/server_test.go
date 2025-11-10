@@ -12,6 +12,7 @@ import (
 	grpcadapter "github.com/lechitz/chat-grpc/internal/chat/adapter/primary/grpc"
 	"github.com/lechitz/chat-grpc/internal/chat/core/usecase"
 	"github.com/lechitz/chat-grpc/internal/platform/logger"
+
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -20,15 +21,9 @@ import (
 
 const bufSize = 1024 * 1024
 
-type noopLogger struct{}
-
-func (noopLogger) Debugw(string, ...interface{}) {}
-func (noopLogger) Infow(string, ...interface{})  {}
-func (noopLogger) Warnw(string, ...interface{})  {}
-func (noopLogger) Errorw(string, ...interface{}) {}
-func (noopLogger) Sync() error                   { return nil }
-
-var _ logger.Logger = (*noopLogger)(nil)
+// Use shared no-op logger implementation from internal/platform/logger for tests
+// avoids repetition and keeps behavior centralized.
+// Example usage: logger.NoopLogger{}
 
 func TestChannel_BasicFlow(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -39,7 +34,7 @@ func TestChannel_BasicFlow(t *testing.T) {
 	t.Cleanup(srv.Stop)
 
 	app := usecase.NewService()
-	chatv1.RegisterChatServiceServer(srv, grpcadapter.NewServer(app, noopLogger{}))
+	chatv1.RegisterChatServiceServer(srv, grpcadapter.NewServer(app, logger.NoopLogger{}))
 
 	go func() {
 		_ = srv.Serve(lis)

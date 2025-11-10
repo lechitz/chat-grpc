@@ -1,88 +1,171 @@
 # chat-grpc
 
-Implementação em Go de um servidor de chat via gRPC com salas em memória. O objetivo é oferecer um ponto de partida simples, porém estruturado, para aplicações de mensageria que exigem streaming bidirecional.
+Servidor de chat em Go com gRPC bidirecional, salas em memória e suporte opcional a OpenTelemetry (traces e métricas) para ambientes locais ou baseados em containers.
+
+
+Este repositório foi pensado como um laboratório prático para experimentar e validar padrões importantes em sistemas distribuídos baseados em gRPC. A ideia não é apenas fornecer um servidor de chat funcional, mas oferecer uma base enxuta e repetível para testar:
+
+- Conectividade e streaming bidirecional: como clientes mantêm streams long‑lived com o servidor e como o servidor distribui eventos (join/leave/message) para participantes.  
+- Concorrência e coerência de sala: comportamento sob múltiplos clientes concorrentes (ordem de mensagens, perda de mensagens, limpeza de sessões).  
+- Resiliência e tratamento de erros: como o sistema reage a cancelamentos, quedas de cliente e reconexões.  
+- Observability / Telemetria: como instrumentar o serviço com OpenTelemetry (traces + métricas) e validar que spans e métricas chegam ao collector (OTLP gRPC/HTTP).  
+- Integração e deploy em containers: padrões práticos para empacotar o servidor/cliente em imagem Docker e testar redes entre serviços no Docker Compose.
+
+---
+
+## Sumário
+
+- [Visão geral](#visão-geral)
+- [Estrutura do repositório](#estrutura-do-repositório)
+- [Pré‑requisitos](#pré-requisitos)
+- [Configuração de ambiente](#configuração-de-ambiente)
+- [Execução local](#execução-local)
+- [Execução com Docker Compose](#execução-com-docker-compose)
+- [Cliente CLI](#cliente-cli)
+- [Geração de protos](#geração-de-protos)
+- [Testes e qualidade](#testes-e-qualidade)
+- [Observabilidade](#observabilidade)
+- [Comandos úteis](#comandos-úteis)
+- [Troubleshooting rápido](#troubleshooting-rápido)
+
+---
 
 ## Visão geral
 
-- **Transporte**: serviço gRPC (`chat.v1.ChatService`) com um único método bidirecional (`Channel`).
-- **Core de domínio**: gerenciador de sessões in-memory em `internal/chat/core/usecase`.
-- **Adapter primário**: `internal/chat/adapter/primary/grpc` traduz envelopes protobuf para operações do domínio.
-- **Bootstrap**: `cmd/chat-grpc/main.go` integra configuração, logger (`zap`) e servidor.
-- **Protobuf**: contrato definido em `api/proto/chat.proto` com bindings Go em `api/proto/chatv1`.
+- Serviço gRPC com streaming bidirecional trocando envelopes (`ClientEnvelope` ↔ `ServerEvent`).
+- Núcleo de domínio em memória que gerencia salas, sessões e broadcast sem dependências externas.
+- Cliente CLI interativo para depuração e demonstrações rápidas.
 
-```
-.
-├── api/proto              # contrato público gRPC
-├── cmd/chat-client        # cliente CLI interativo
-├── cmd/chat-grpc          # entrypoint do servidor
-├── internal/chat          # domínio + adapters
-└── internal/platform      # config, logger, runtime, servidor
-```
+---
 
-## Pré-requisitos
+## Estrutura do repositório
 
-| Ferramenta | Versão recomendada | Observações |
-|------------|--------------------|-------------|
-| Go         | 1.22+              | Necessário para build, testes e cliente CLI |
-| protoc + plugins Go | opcional | Apenas se desejar regenerar os arquivos em `api/proto/chatv1` |
+- `cmd/chat-grpc` — entrypoint do servidor gRPC.
+- `cmd/chat-client` — cliente CLI interativo.
+- `api/proto` — definição `chat.proto` e o código gerado em `api/proto/chatv1`.
+- `internal/chat` — domínio, salas, sessão, orchestrators e adapters.
+- `internal/platform` — config, observability, logger adapter, servidor gRPC.
+- `infra/docker` — Dockerfile + ambiente Compose.
+- `infra/observability/otel` — configuração do Collector utilizado no Compose.
+- `tests/integration` — suíte de integração.
+- `makefiles` — alvos especializados usados pelo Makefile principal.
 
-## Instalação
+---
+
+## Pré‑requisitos
+
+- Go 1.22+
+- Docker 24+ e Docker Compose Plugin (opcional)
+- `protoc` instalado para regenerar protos (opcional)
+
+---
+
+## Execução local
+
+1. (Opcional) Garanta caches locais para builds determinísticos:
 
 ```bash
-git clone https://github.com/lechitz/chat-grpc.git
-cd chat-grpc
 export GOCACHE=$PWD/.gocache
 export GOMODCACHE=$PWD/.gomodcache
-go mod download
 ```
 
-## Configuração
+2. Suba o servidor diretamente:
 
 ```bash
-make env # copia .env.example para .env
+go run ./cmd/chat-grpc
 ```
 
-Edite o arquivo `.env` com os valores adequados antes de levantar o servidor ou o cliente.
-
-## Execução rápida
-
-| Terminal | Comando | Descrição |
-|----------|---------|-----------|
-| #1 | `make run` | Inicia o servidor gRPC |
-| #2 | `make client` | Abre o cliente interativo; informe o nome e a sala (Enter mantém `general`) |
-| #3… | `make client` | Inicie quantos participantes quiser; cada terminal mantém um stream ativo |
-
-Dentro do cliente, digite mensagens e pressione Enter. Para encerrar, envie `!quit`. Caso o servidor esteja em outra máquina ou porta, defina `CHAT_GRPC_HOST` e `CHAT_GRPC_PORT` antes de executar `make run`/`make client`.
-
-## Testes
+3. Abra quantos clientes desejar (cada um em um terminal):
 
 ```bash
-export GOCACHE=${GOCACHE:-$PWD/.gocache}
-export GOMODCACHE=${GOMODCACHE:-$PWD/.gomodcache}
-go test ./...
+go run ./cmd/chat-client
 ```
 
-## Teste alternativo com `grpcurl`
+---
+
+## Execução com Docker Compose
+
+Existem três alvos principais no `Makefile` para o ambiente de desenvolvimento:
+
+- `make build-dev` — constrói a imagem Docker atualizada.
+- `make dev` —  sobe o ambiente completo (server + otel collector).
+- `make server` — sobe apenas o serviço `chat-grpc`.
+- `make client` — abre o cliente CLI dentro do Compose.
+
+Fluxos recomendados:
+
+- Primeira vez / ambiente completo:
 
 ```bash
-printf '%s\n%s\n' \
-  '{"join":{"userId":"alice","room":"general","displayName":"Alice"}}' \
-  '{"chat":{"userId":"alice","room":"general","content":"Olá pessoal!"}}' \
-| grpcurl -plaintext -import-path api/proto -proto chat.proto -d @ \
-  127.0.0.1:50051 chat.v1.ChatService.Channel
+make dev
 ```
 
-## Regenerar protobuf (opcional)
+- Iteração rápida se a imagem já existe:
 
-Requer `protoc` e os plugins `protoc-gen-go` e `protoc-gen-go-grpc` instalados na máquina.
+```bash
+make server
+```
+
+- Forçar rebuild da imagem e subir o servidor:
+
+```bash
+make build-dev
+make server
+```
+---
+
+## Cliente CLI
+
+Modo local:
+
+```bash
+go run ./cmd/chat-client
+```
+
+Modo via compose:
+
+```bash
+make client
+```
+---
+
+## Geração de protos
+
+Se `api/proto/chat.proto` for modificado, regenere os artefatos:
 
 ```bash
 make proto
 ```
+---
+
+## Testes e qualidade
+
+### Testes unitários
 
 ```bash
-protoc \
-  --go_out=api/proto/chatv1 --go_opt=paths=source_relative \
-  --go-grpc_out=api/proto/chatv1 --go-grpc_opt=paths=source_relative \
-  api/proto/chat.proto
+make test
 ```
+
+### Testes de integração
+
+Os testes de integração estão em `tests/integration`. Execute com:
+
+```bash
+make test-integration
+```
+
+---
+
+## Comandos úteis
+
+- `make build` — compila binário do servidor local
+- `make run` — executa o servidor local
+- `make build-dev` — constrói imagem dev
+- `make dev` — sobe ambiente completo (build + up)
+- `make server` — sobe apenas o serviço do servidor
+- `make client` — abre cliente dentro do compose
+- `make test-integration` — roda testes de integração (tag integration)
+- `make lint` — roda linters/format
+- `make proto` — regenera código a partir do proto
+
+---

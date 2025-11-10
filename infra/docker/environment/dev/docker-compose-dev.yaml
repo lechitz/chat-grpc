@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.139.0
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ../../../observability/otel/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "9888:9888" # /metrics for Prometheus scraping or health
+    networks:
+      - rede_local
+    restart: unless-stopped
+
+  chat-grpc:
+    build:
+      context: ../../../..
+      dockerfile: infra/docker/Dockerfile
+    container_name: chat-grpc-dev
+    env_file:
+      - ../../../../.env
+    environment:
+      CHAT_GRPC_HOST: ${CHAT_GRPC_HOST:-0.0.0.0}
+      CHAT_GRPC_PORT: ${CHAT_GRPC_PORT:-50051}
+    volumes:
+      - ../../../../.env:/app/.env:ro
+    ports:
+      - "50051:50051" # gRPC
+    depends_on:
+      otel-collector:
+        condition: service_started
+    networks:
+      - rede_local
+    restart: unless-stopped
+
+  chat-client:
+    image: ${CHAT_CLIENT_IMAGE:-dev-chat-grpc}
+    container_name: chat-client-run
+    entrypoint: ["./chat-client"]
+    env_file:
+      - ../../../../.env
+    environment:
+      CHAT_GRPC_HOST: chat-grpc
+      CHAT_GRPC_PORT: 50051
+    networks:
+      - rede_local
+    stdin_open: true
+    tty: true
+    deploy:
+      restart_policy:
+        condition: none
+
+networks:
+  rede_local:

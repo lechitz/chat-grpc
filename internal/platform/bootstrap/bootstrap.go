@@ -7,17 +7,17 @@ import (
 	"github.com/lechitz/chat-grpc/internal/chat/core/ports/input"
 	"github.com/lechitz/chat-grpc/internal/chat/core/usecase"
 	"github.com/lechitz/chat-grpc/internal/platform/config"
-	"github.com/lechitz/chat-grpc/internal/platform/logger"
+	"github.com/lechitz/chat-grpc/internal/platform/ports/logger"
 )
 
 // AppDependencies collects the primary ports exposed to adapters.
 type AppDependencies struct {
 	ChatService input.StreamService
-	Logger      logger.Logger
+	Logger      logger.ContextLogger
 }
 
 // Initialize builds the dependencies required by transports.
-func Initialize(ctx context.Context, cfg *config.Config, log logger.Logger) (*AppDependencies, func(context.Context), error) {
+func Initialize(ctx context.Context, cfg *config.Config, log logger.ContextLogger) (*AppDependencies, func(context.Context), error) {
 	_ = cfg
 	_ = ctx
 
