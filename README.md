@@ -18,15 +18,12 @@ Este repositório foi pensado como um laboratório prático para experimentar e 
 - [Visão geral](#visão-geral)
 - [Estrutura do repositório](#estrutura-do-repositório)
 - [Pré‑requisitos](#pré-requisitos)
-- [Configuração de ambiente](#configuração-de-ambiente)
 - [Execução local](#execução-local)
 - [Execução com Docker Compose](#execução-com-docker-compose)
 - [Cliente CLI](#cliente-cli)
 - [Geração de protos](#geração-de-protos)
 - [Testes e qualidade](#testes-e-qualidade)
-- [Observabilidade](#observabilidade)
 - [Comandos úteis](#comandos-úteis)
-- [Troubleshooting rápido](#troubleshooting-rápido)
 
 ---
 
